@@ -7,6 +7,8 @@ import errorHandler from './middlewares/errorHandler';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
+import fs from 'fs';
+import path from 'path';
 import rateLimit from 'express-rate-limit';
 import swaggerUi from 'swagger-ui-express';
 import swaggerSpec from './config/swagger';
@@ -15,13 +17,21 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+const accessLogStream = fs.createWriteStream(
+    path.join(__dirname, 'access.log'),
+    { flags: 'a' }
+);
+
 // 1. Essential Middlewares
 app.use(helmet()); // Security headers
 app.use(cors({
     origin: process.env.CLIENT_URL || 'http://localhost:3000'
 })); // CORS policy
 app.use(express.json()); // Parse JSON bodies
-app.use(morgan('dev')); // Request logging
+app.use(process.env.NODE_ENV === 'production'
+    ? morgan('combined', { stream: accessLogStream })
+    : morgan('dev')
+);
 
 // 2. Optional Middlewares
 const limiter = rateLimit({
@@ -41,6 +51,15 @@ app.use('/api/users', userRoutes);
 
 // 5. Error Handler (MUST be last middleware)
 app.use(errorHandler);
+
+//Health Check
+app.get('/health', (req, res) => {
+    res.json({
+        status: 'OK',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime()
+    });
+});
 
 connectDB().then(() => {
     app.listen(PORT, () => {
