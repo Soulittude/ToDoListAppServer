@@ -9,8 +9,11 @@ import {
 } from '../controllers/todo.controller';
 import validateObjectId from '../middlewares/validateObjectId';
 import validateRequest from '../middlewares/validateRequest';
+import { auth } from '../middlewares/auth';
 
 const router = Router();
+
+router.post('/', auth, createTodo); // Add auth middleware
 
 /**
  * @swagger

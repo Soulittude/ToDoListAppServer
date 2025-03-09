@@ -2,6 +2,7 @@ import express from 'express';
 import connectDB from './config/db';
 import dotenv from 'dotenv';
 import todoRoutes from './routes/todo.routes';
+import userRoutes from './routes/user.routes';
 import errorHandler from './middlewares/errorHandler';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -36,6 +37,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // 4. Routes
 app.use('/api/todos', todoRoutes);
+app.use('/api/users', userRoutes);
 
 // 5. Error Handler (MUST be last middleware)
 app.use(errorHandler);
