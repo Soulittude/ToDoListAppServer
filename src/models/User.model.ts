@@ -27,8 +27,6 @@ const UserSchema = new Schema<IUser>({
     }
 });
 
-UserSchema.index({ email: 1 }, { unique: true });
-
 UserSchema.methods.toJSON = function () {
     const user = this.toObject();
     delete user.password;
