@@ -12,7 +12,7 @@ const options = {
             { url: 'http://localhost:5000' }
         ],
     },
-    apis: ['./src/routes/*.ts'], // Path to your route files
+    apis: ['./src/routes/*.ts'], // Path to your route files.
 };
 
 export default swaggerJsdoc(options);
