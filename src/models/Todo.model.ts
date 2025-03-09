@@ -1,9 +1,10 @@
-import { Document, Schema, model } from 'mongoose';
+import mongoose, { Document, Schema, model } from 'mongoose';
 
 // A. TypeScript Interface (For type checking)
 export interface ITodo extends Document {
     text: string;
     completed: boolean;
+    user: string | mongoose.Types.ObjectId;
 }
 
 // B. Database Schema (For MongoDB rules)
@@ -15,6 +16,11 @@ const TodoSchema = new Schema<ITodo>({
     completed: {
         type: Boolean,
         default: false
+    },
+    user: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
     }
 }, {
     timestamps: true // Adds createdAt/updatedAt fields

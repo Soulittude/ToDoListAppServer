@@ -1,7 +1,9 @@
-// Extend Express Request type
-declare namespace Express {
-    export interface Request {
-        userId?: string;
-        user?: JwtPayload;
+import { JwtPayload } from 'jsonwebtoken';
+
+declare global {
+    namespace Express {
+        interface Request {
+            userId?: string;
+        }
     }
 }

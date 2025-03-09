@@ -3,6 +3,8 @@ import { Schema, model, Document } from 'mongoose';
 export interface IUser extends Document {
     email: string;
     password: string;
+    createdAt: Date;
+    updatedAt: Date;
 }
 
 const UserSchema = new Schema<IUser>({
@@ -14,7 +16,24 @@ const UserSchema = new Schema<IUser>({
     password: {
         type: String,
         required: true
+    },
+    createdAt: {
+        type: Date,
+        default: Date.now
+    },
+    updatedAt: {
+        type: Date,
+        default: Date.now
     }
 });
+
+UserSchema.index({ email: 1 }, { unique: true });
+
+UserSchema.methods.toJSON = function () {
+    const user = this.toObject();
+    delete user.password;
+    delete user.__v;
+    return user;
+};
 
 export default model<IUser>('User', UserSchema);

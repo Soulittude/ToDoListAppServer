@@ -1,10 +1,12 @@
 import { Router } from 'express';
 import { body } from 'express-validator';
-import { register, login } from '../controllers/user.controller';
+import { register, login, getProfile } from '../controllers/user.controller';
 import validateRequest from '../middlewares/validateRequest';
+import { auth } from '../middlewares/auth';
 
 const router = Router();
 
+// Registration
 router.post(
     '/register',
     [
@@ -15,6 +17,7 @@ router.post(
     register
 );
 
+// Login
 router.post(
     '/login',
     [
@@ -24,5 +27,8 @@ router.post(
     validateRequest,
     login
 );
+
+// Get current user profile (requires authentication)
+router.get('/me', auth, getProfile);
 
 export default router;

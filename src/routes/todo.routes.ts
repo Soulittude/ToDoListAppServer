@@ -13,7 +13,8 @@ import { auth } from '../middlewares/auth';
 
 const router = Router();
 
-router.post('/', auth, createTodo); // Add auth middleware
+// Apply auth middleware to ALL todo routes ▼
+router.use(auth);
 
 /**
  * @swagger
@@ -24,7 +25,7 @@ router.post('/', auth, createTodo); // Add auth middleware
  *       required:
  *         - text
  *       properties:
- *         id:
+ *         _id:
  *           type: string
  *           description: The auto-generated MongoDB ID
  *         text:
@@ -35,14 +36,15 @@ router.post('/', auth, createTodo); // Add auth middleware
  *         completed:
  *           type: boolean
  *           default: false
+ *         user:
+ *           type: string
+ *           description: The user ID who owns the todo
  *         createdAt:
  *           type: string
  *           format: date-time
- *           description: Auto-generated creation timestamp
  *         updatedAt:
  *           type: string
  *           format: date-time
- *           description: Auto-generated update timestamp
  *   responses:
  *     NotFoundError:
  *       description: The specified resource was not found
@@ -63,33 +65,7 @@ router.post('/', auth, createTodo); // Add auth middleware
  *                 param: text
  */
 
-/**
- * @swagger
- * /api/todos:
- *   post:
- *     tags: [Todos]
- *     summary: Create a new todo
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/Todo'
- *           example:
- *             text: Learn TypeScript
- *             completed: false
- *     responses:
- *       201:
- *         description: The created todo item
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Todo'
- *       400:
- *         $ref: '#/components/responses/ValidationError'
- *       500:
- *         description: Server error
- */
+// POST /todos ▼ (auth removed from route definition)
 router.post(
     '/',
     [
@@ -105,37 +81,37 @@ router.post(
 
 /**
  * @swagger
- * /api/todos/{id}:
- *   put:
+ * /api/todos:
+ *   post:
+ *     security:
+ *       - bearerAuth: []
  *     tags: [Todos]
- *     summary: Update a todo
- *     parameters:
- *       - in: path
- *         name: id
- *         schema:
- *           type: string
- *         required: true
- *         description: MongoDB ID of the todo to update
+ *     summary: Create a new todo
  *     requestBody:
+ *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/Todo'
  *           example:
- *             text: Updated todo item
- *             completed: true
+ *             text: Learn TypeScript
  *     responses:
- *       200:
- *         description: The updated todo item
+ *       201:
+ *         description: The created todo item
  *         content:
  *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Todo'
- *       400:
- *         $ref: '#/components/responses/ValidationError'
- *       404:
- *         $ref: '#/components/responses/NotFoundError'
+ *             example:
+ *               success: true
+ *               data:
+ *                 _id: "65d5b7e5a3b1a12a90c1e1d4"
+ *                 text: "Learn TypeScript"
+ *                 completed: false
+ *                 user: "65d5b7e5a3b1a12a90c1e1d5"
+ *                 createdAt: "2024-02-21T10:00:00.000Z"
+ *                 updatedAt: "2024-02-21T10:00:00.000Z"
  */
+
+// PUT /todos/:id ▼
 router.put(
     '/:id',
     validateObjectId,
@@ -154,29 +130,41 @@ router.put(
 /**
  * @swagger
  * /api/todos/{id}:
- *   delete:
+ *   put:
+ *     security:
+ *       - bearerAuth: []
  *     tags: [Todos]
- *     summary: Delete a todo
+ *     summary: Update a todo
  *     parameters:
  *       - in: path
  *         name: id
+ *         required: true
  *         schema:
  *           type: string
- *         required: true
- *         description: MongoDB ID of the todo to delete
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/Todo'
+ *           example:
+ *             text: Updated todo item
+ *             completed: true
  *     responses:
  *       200:
- *         description: Confirmation of deletion
+ *         description: The updated todo item
  *         content:
  *           application/json:
  *             example:
  *               success: true
- *               message: Todo deleted successfully
- *       400:
- *         description: Invalid ID format
- *       404:
- *         $ref: '#/components/responses/NotFoundError'
+ *               data:
+ *                 _id: "65d5b7e5a3b1a12a90c1e1d4"
+ *                 text: "Updated todo item"
+ *                 completed: true
+ *                 user: "65d5b7e5a3b1a12a90c1e1d5"
+ *                 updatedAt: "2024-02-21T10:05:00.000Z"
  */
+
+// DELETE /todos/:id ▼
 router.delete(
     '/:id',
     validateObjectId,
@@ -186,28 +174,25 @@ router.delete(
 /**
  * @swagger
  * /api/todos/{id}:
- *   get:
+ *   delete:
+ *     security:
+ *       - bearerAuth: []
  *     tags: [Todos]
- *     summary: Get a single todo
+ *     summary: Delete a todo
  *     parameters:
  *       - in: path
  *         name: id
+ *         required: true
  *         schema:
  *           type: string
- *         required: true
- *         description: MongoDB ID of the todo to fetch
  *     responses:
- *       200:
- *         description: Todo details
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Todo'
- *       400:
- *         description: Invalid ID format
+ *       204:
+ *         description: Successfully deleted
  *       404:
  *         $ref: '#/components/responses/NotFoundError'
  */
+
+// GET /todos/:id ▼
 router.get(
     '/:id',
     validateObjectId,
@@ -216,29 +201,60 @@ router.get(
 
 /**
  * @swagger
- * /api/todos:
+ * /api/todos/{id}:
  *   get:
+ *     security:
+ *       - bearerAuth: []
  *     tags: [Todos]
- *     summary: Get all todos
+ *     summary: Get a single todo
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
  *     responses:
  *       200:
- *         description: List of all todos
+ *         description: Todo details
  *         content:
  *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Todo'
  *             example:
- *               - id: "65d5b7e5a3b1a12a90c1e1d4"
+ *               success: true
+ *               data:
+ *                 _id: "65d5b7e5a3b1a12a90c1e1d4"
  *                 text: "Learn MERN Stack"
  *                 completed: false
+ *                 user: "65d5b7e5a3b1a12a90c1e1d5"
  *                 createdAt: "2024-02-21T10:00:00.000Z"
- *                 updatedAt: "2024-02-21T10:00:00.000Z"
  */
+
+// GET /todos ▼
 router.get(
     '/',
     getTodos
 );
+
+/**
+ * @swagger
+ * /api/todos:
+ *   get:
+ *     security:
+ *       - bearerAuth: []
+ *     tags: [Todos]
+ *     summary: Get all todos for current user
+ *     responses:
+ *       200:
+ *         description: List of todos
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               data:
+ *                 - _id: "65d5b7e5a3b1a12a90c1e1d4"
+ *                   text: "Learn MERN Stack"
+ *                   completed: false
+ *                   user: "65d5b7e5a3b1a12a90c1e1d5"
+ *                   createdAt: "2024-02-21T10:00:00.000Z"
+ */
 
 export default router;
