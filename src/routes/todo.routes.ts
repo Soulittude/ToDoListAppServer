@@ -108,7 +108,6 @@ router.post(
  *                 completed: false
  *                 user: "65d5b7e5a3b1a12a90c1e1d5"
  *                 createdAt: "2024-02-21T10:00:00.000Z"
- *                 updatedAt: "2024-02-21T10:00:00.000Z"
  */
 
 // PUT /todos/:id ▼
@@ -226,6 +225,7 @@ router.get(
  *                 completed: false
  *                 user: "65d5b7e5a3b1a12a90c1e1d5"
  *                 createdAt: "2024-02-21T10:00:00.000Z"
+ *                 updatedAt: "2024-02-21T10:00:00.000Z"
  */
 
 // GET /todos ▼
@@ -255,6 +255,7 @@ router.get(
  *                   completed: false
  *                   user: "65d5b7e5a3b1a12a90c1e1d5"
  *                   createdAt: "2024-02-21T10:00:00.000Z"
+ *                   updatedAt: "2024-02-21T10:00:00.000Z"
  */
 
 export default router;

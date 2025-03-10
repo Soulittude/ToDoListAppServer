@@ -73,7 +73,8 @@ export const login = async (req: Request, res: Response) => {
                 user: {
                     _id: user._id,
                     email: user.email,
-                    createdAt: user.createdAt
+                    createdAt: user.createdAt,
+                    updatedAt: user.updatedAt
                 }
             }
         });
