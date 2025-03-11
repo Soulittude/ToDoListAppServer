@@ -18,4 +18,5 @@ export const auth = async (req: Request, res: Response, next: NextFunction) => {
             error: 'Authentication failed'
         });
     }
+    return;
 };
