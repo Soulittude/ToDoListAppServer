@@ -115,6 +115,12 @@ router.put(
     '/:id',
     validateObjectId,
     [
+        body().custom((value) => {
+            if (!value.text && typeof value.completed === 'undefined') {
+                throw new Error('At least one field (text or completed) must be provided');
+            }
+            return true;
+        }),
         body('text')
             .optional()
             .trim()

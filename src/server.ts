@@ -25,8 +25,9 @@ const accessLogStream = fs.createWriteStream(
 // 1. Essential Middlewares
 app.use(helmet()); // Security headers
 app.use(cors({
-    origin: process.env.CLIENT_URL || 'http://localhost:3000'
-})); // CORS policy
+    origin: process.env.CLIENT_URL || 'http://localhost:3000',
+    credentials: true
+}));
 app.use(express.json()); // Parse JSON bodies
 app.use(process.env.NODE_ENV === 'production'
     ? morgan('combined', { stream: accessLogStream })
