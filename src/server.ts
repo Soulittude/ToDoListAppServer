@@ -26,6 +26,7 @@ const accessLogStream = fs.createWriteStream(
 app.use(helmet()); // Security headers
 app.use(cors({
     origin: process.env.CLIENT_URL || 'http://localhost:3000',
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
     credentials: true
 }));
 app.use(express.json()); // Parse JSON bodies
@@ -57,7 +58,7 @@ app.use('/api/users', userRoutes);
 app.use(errorHandler);
 
 //Health Check
-app.get('/health', (req, res) => {
+app.get('/api/health', (req, res) => {
     res.json({
         status: 'OK',
         timestamp: new Date().toISOString(),

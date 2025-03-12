@@ -1,86 +1,97 @@
 import { Request, Response } from 'express';
-import jwt from 'jsonwebtoken';
-import bcrypt from 'bcrypt';
 import User from '../models/User.model';
+import jwt from 'jsonwebtoken';
 
-const JWT_EXPIRES_IN = '6h';
-const BCRYPT_ROUNDS = 10;
-
-const sendError = (res: Response, status: number, message: string) => {
-    return res.status(status).json({ success: false, error: message });
-};
-
-// User Registration
 export const register = async (req: Request, res: Response) => {
     try {
         const { email, password } = req.body;
 
-        // Check for existing user
-        const existingUser = await User.findOne({ email: email.toLowerCase() });
-        if (existingUser) return sendError(res, 400, 'Email already exists');
+        // Validate input
+        if (!email || !password) {
+            return res.status(400).json({
+                success: false,
+                error: 'Email and password are required'
+            });
+        }
 
         // Create user
-        const user = await User.create({
-            email: email.toLowerCase(),
-            password: await bcrypt.hash(password, BCRYPT_ROUNDS)
-        });
+        const user = new User({ email, password });
+        await user.save();
 
         // Generate JWT
         const token = jwt.sign(
-            { userId: user._id },
+            { userId: user.id },
             process.env.JWT_SECRET!,
-            { expiresIn: JWT_EXPIRES_IN }
+            { expiresIn: '1h' }
         );
 
+        // Response with safe user data
         res.status(201).json({
             success: true,
             data: {
                 token,
-                user: {
-                    _id: user._id,
-                    email: user.email,
-                    createdAt: user.createdAt
-                }
+                user: user.toJSON()
             }
         });
 
-    } catch (error) {
-        sendError(res, 400, 'Registration failed');
+    } catch (error: any) {
+        // Handle duplicate email error
+        if (error.code === 11000) {
+            return res.status(400).json({
+                success: false,
+                error: 'Email already exists'
+            });
+        }
+
+        res.status(500).json({
+            success: false,
+            error: 'Registration failed'
+        });
     }
 };
 
-// User Login
 export const login = async (req: Request, res: Response) => {
     try {
         const { email, password } = req.body;
 
-        const user = await User.findOne({ email: email.toLowerCase() });
-        if (!user) return sendError(res, 401, 'Invalid credentials');
+        // Find user
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(401).json({
+                success: false,
+                error: 'Invalid credentials'
+            });
+        }
 
-        const validPassword = await bcrypt.compare(password, user.password);
-        if (!validPassword) return sendError(res, 401, 'Invalid credentials');
+        // Check password
+        const isMatch = await user.comparePassword(password);
+        if (!isMatch) {
+            return res.status(401).json({
+                success: false,
+                error: 'Invalid credentials'
+            });
+        }
 
+        // Generate JWT
         const token = jwt.sign(
-            { userId: user._id },
+            { userId: user.id },
             process.env.JWT_SECRET!,
-            { expiresIn: JWT_EXPIRES_IN }
+            { expiresIn: '1h' }
         );
 
         res.json({
             success: true,
             data: {
                 token,
-                user: {
-                    _id: user._id,
-                    email: user.email,
-                    createdAt: user.createdAt,
-                    updatedAt: user.updatedAt
-                }
+                user: user.toJSON()
             }
         });
 
     } catch (error) {
-        sendError(res, 400, 'Login failed');
+        res.status(500).json({
+            success: false,
+            error: 'Login failed'
+        });
     }
 };
 
@@ -94,3 +105,7 @@ export const getProfile = async (req: Request, res: Response) => {
         sendError(res, 500, 'Server error');
     }
 };
+
+function sendError(res: Response<any, Record<string, any>>, arg1: number, arg2: string) {
+    throw new Error('Function not implemented.');
+}
