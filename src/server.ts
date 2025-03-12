@@ -45,6 +45,9 @@ app.use(limiter);
 
 // 3. Documentation
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.get('/', (req, res) => {
+    res.redirect('/api-docs');
+});
 
 // 4. Routes
 app.use('/api/todos', todoRoutes);
@@ -60,6 +63,10 @@ app.get('/health', (req, res) => {
         timestamp: new Date().toISOString(),
         uptime: process.uptime()
     });
+});
+
+app.get('/', (req, res) => {
+    res.redirect('/api-docs'); // Or send simple response
 });
 
 connectDB().then(() => {
