@@ -5,6 +5,7 @@ import {
     deleteTodo,
     getTodo,
     getTodos,
+    reorderTodos,
     updateTodo
 } from '../controllers/todo.controller';
 import validateObjectId from '../middlewares/validateObjectId';
@@ -65,14 +66,45 @@ router.use(auth);
  *                 param: text
  */
 
+router.patch(
+    '/reorder',
+    [
+        body('ids')
+            .isArray().withMessage('IDs must be an array')
+            .notEmpty().withMessage('IDs array cannot be empty')
+    ],
+    validateRequest,
+    reorderTodos
+);
+
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     Todo:
+ *       type: object
+ *       properties:
+ *         dueDate:
+ *           type: string
+ *           format: date-time
+ *           example: "2024-03-15T09:00:00Z"
+ *         recurrence:
+ *           type: string
+ *           enum: [daily, weekly]
+ *           example: "daily"
+ *         nextOccurrence:
+ *           type: string
+ *           format: date-time
+ *           example: "2024-03-16T09:00:00Z"
+ */
+
 // POST /todos ▼ (auth removed from route definition)
 router.post(
     '/',
     [
-        body('text')
-            .trim()
-            .notEmpty().withMessage('Text is required')
-            .isLength({ max: 500 }).withMessage('Maximum 500 characters allowed'),
+        body('text').trim().notEmpty().isLength({ max: 500 }),
+        body('dueDate').optional().isISO8601(),
+        body('recurrence').optional().isIn(['daily', 'weekly']),
         body('completed').optional().isBoolean()
     ],
     validateRequest,
@@ -115,17 +147,16 @@ router.put(
     '/:id',
     validateObjectId,
     [
-        body().custom((value) => {
-            if (!value.text && typeof value.completed === 'undefined') {
-                throw new Error('At least one field (text or completed) must be provided');
+        body().custom(value => {
+            const allowedFields = ['text', 'completed', 'dueDate', 'recurrence'];
+            if (!Object.keys(value).some(k => allowedFields.includes(k))) {
+                throw new Error('At least one valid field must be provided');
             }
             return true;
         }),
-        body('text')
-            .optional()
-            .trim()
-            .notEmpty().withMessage('Text cannot be empty')
-            .isLength({ max: 500 }).withMessage('Maximum 500 characters allowed'),
+        body('text').optional().trim().notEmpty().isLength({ max: 500 }),
+        body('dueDate').optional().isISO8601(),
+        body('recurrence').optional().isIn(['daily', 'weekly']),
         body('completed').optional().isBoolean()
     ],
     validateRequest,

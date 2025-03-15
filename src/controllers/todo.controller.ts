@@ -9,28 +9,33 @@ const sendError = (res: Response, status: number, message: string) => {
 // Create Todo
 export const createTodo = async (req: Request, res: Response) => {
     try {
-        const todo = await Todo.create({
+        const todoData = {
             text: req.body.text,
-            user: req.userId
-        });
+            user: req.userId,
+            dueDate: req.body.dueDate,
+            recurrence: req.body.recurrence
+        };
+
+        const todo = await Todo.create(todoData);
         res.status(201).json({ success: true, data: todo });
     } catch (error) {
         sendError(res, 400, 'Failed to create todo');
     }
 };
 
-// Update Todo
 export const updateTodo = async (req: Request, res: Response) => {
     try {
+        const updateData: Record<string, any> = {
+            text: req.body.text,
+            completed: req.body.completed
+        };
+
+        if (req.body.dueDate !== undefined) updateData.dueDate = req.body.dueDate;
+        if (req.body.recurrence !== undefined) updateData.recurrence = req.body.recurrence;
+
         const todo = await Todo.findOneAndUpdate(
-            {
-                _id: req.params.id,
-                user: req.userId // Ensure user owns the todo
-            },
-            {
-                text: req.body.text,
-                completed: req.body.completed
-            },
+            { _id: req.params.id, user: req.userId },
+            updateData,
             { new: true }
         );
 
@@ -38,6 +43,17 @@ export const updateTodo = async (req: Request, res: Response) => {
         res.json({ success: true, data: todo });
     } catch (error) {
         sendError(res, 400, 'Update failed');
+    }
+};
+
+// Add new controller for reordering
+export const reorderTodos = async (req: Request, res: Response) => {
+    try {
+        const { ids } = req.body;
+        await Todo.reorderTodos(req.userId!, ids);
+        res.json({ success: true });
+    } catch (error) {
+        sendError(res, 400, 'Failed to reorder todos');
     }
 };
 

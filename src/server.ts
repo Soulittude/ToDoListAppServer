@@ -26,7 +26,7 @@ const accessLogStream = fs.createWriteStream(
 app.use(helmet()); // Security headers
 app.use(cors({
     origin: process.env.CLIENT_URL || 'http://localhost:3000',
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     credentials: true
 }));
 app.use(express.json()); // Parse JSON bodies
