@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { body } from 'express-validator';
 import {
+    createSpecificDateTodo,
     createTodo,
     deleteTodo,
     getTodo,
@@ -294,5 +295,17 @@ router.get(
  *                   createdAt: "2024-02-21T10:00:00.000Z"
  *                   updatedAt: "2024-02-21T10:00:00.000Z"
  */
+
+// Add new route for specific date todos
+router.post(
+    '/specific-date',
+    [
+        body('text').trim().notEmpty().isLength({ max: 500 }),
+        body('specificDate').isISO8601(),
+        body('completed').optional().isBoolean()
+    ],
+    validateRequest,
+    createSpecificDateTodo
+);
 
 export default router;

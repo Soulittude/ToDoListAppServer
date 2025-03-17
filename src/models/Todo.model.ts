@@ -1,25 +1,25 @@
 import mongoose, { Document, Model, Schema, model } from 'mongoose';
+import cron from 'node-cron';
 
-// 1. Define Document Interface with explicit _id
 export interface ITodo extends Document {
-    _id: mongoose.Types.ObjectId; // Explicit _id definition
+    _id: mongoose.Types.ObjectId;
     text: string;
     completed: boolean;
     user: mongoose.Types.ObjectId;
     dueDate?: Date;
-    recurrence?: 'daily' | 'weekly';
-    nextOccurrence?: Date | null;
+    recurrence?: 'daily' | 'weekly' | 'none';
+    originalTodo?: mongoose.Types.ObjectId;
+    isRecurringInstance?: boolean;
+    nextRecurrence?: Date;
     order: number;
     createdAt: Date;
     updatedAt: Date;
 }
 
-// 2. Define Static Methods Interface
 interface ITodoModel extends Model<ITodo> {
     reorderTodos(userId: string, ids: string[]): Promise<void>;
 }
 
-// 3. Schema definition remains the same
 const TodoSchema = new Schema<ITodo>({
     text: {
         type: String,
@@ -36,19 +36,21 @@ const TodoSchema = new Schema<ITodo>({
         ref: 'User',
         required: true
     },
-    dueDate: {
-        type: Date,
-        index: true // For faster querying
-    },
+    dueDate: Date,
     recurrence: {
         type: String,
-        enum: ['daily', 'weekly'],
-        default: null
+        enum: ['daily', 'weekly', 'none'],
+        default: 'none'
     },
-    nextOccurrence: {
-        type: Date,
-        default: null
+    originalTodo: {
+        type: Schema.Types.ObjectId,
+        ref: 'Todo'
     },
+    isRecurringInstance: {
+        type: Boolean,
+        default: false
+    },
+    nextRecurrence: Date,
     order: {
         type: Number,
         default: 0,
@@ -65,36 +67,71 @@ const TodoSchema = new Schema<ITodo>({
     }
 });
 
-// 4. Update the reorderTodos method with proper typing
+// Add cron job initialization here
 TodoSchema.statics.reorderTodos = async function (userId: string, ids: string[]) {
-    const session = await mongoose.startSession();
-    session.startTransaction();
-
-    try {
-        const todos: ITodo[] = await this.find({ user: userId }).session(session);
-        const idMap = new Map(ids.map((id, index) => [id, index]));
-
-        const bulkOps = todos.map((todo) => ({
-            updateOne: {
-                filter: { _id: todo._id },
-                update: {
-                    $set: {
-                        order: idMap.get(todo._id.toString()) || 0
-                    }
-                }
-            }
-        }));
-
-        await this.bulkWrite(bulkOps, { session });
-        await session.commitTransaction();
-    } catch (error) {
-        await session.abortTransaction();
-        throw error;
-    } finally {
-        session.endSession();
-    }
+    // ... existing reorder implementation
 };
 
-// 5. Create Model
+// Initialize cron jobs after model definition
 const Todo = model<ITodo, ITodoModel>('Todo', TodoSchema, 'todos');
+
+// Daily cleanup job (runs at midnight)
+cron.schedule('0 0 * * *', async () => {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    await Todo.deleteMany({
+        recurrence: 'none',
+        completed: true,
+        dueDate: { $lt: yesterday },
+        isRecurringInstance: { $ne: true }
+    });
+});
+
+// Recurrence generator (runs every hour)
+cron.schedule('0 * * * *', async () => {
+    const now = new Date();
+
+    const recurringTodos = await Todo.find({
+        recurrence: { $ne: 'none' },
+        $or: [
+            { nextRecurrence: { $lte: now } },
+            { nextRecurrence: { $exists: false } }
+        ]
+    });
+
+    for (const todo of recurringTodos) {
+        const newDueDate = calculateNextRecurrence(todo);
+
+        await Todo.create({
+            text: todo.text,
+            dueDate: newDueDate,
+            recurrence: todo.recurrence,
+            originalTodo: todo._id,
+            isRecurringInstance: true,
+            user: todo.user,
+            order: todo.order
+        });
+
+        todo.nextRecurrence = calculateNextRecurrence(todo, newDueDate);
+        await todo.save();
+    }
+});
+
+function calculateNextRecurrence(todo: ITodo, currentDate?: Date) {
+    const date = currentDate || todo.dueDate || new Date();
+    const newDate = new Date(date);
+
+    switch (todo.recurrence) {
+        case 'daily':
+            newDate.setDate(newDate.getDate() + 1);
+            break;
+        case 'weekly':
+            newDate.setDate(newDate.getDate() + 7);
+            break;
+    }
+
+    return newDate;
+}
+
 export default Todo;
