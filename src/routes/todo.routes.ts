@@ -104,7 +104,7 @@ router.post(
     '/',
     [
         body('text').trim().notEmpty().isLength({ max: 500 }),
-        body('dueDate').optional().isISO8601(),
+        body('date').optional().isISO8601(),
         body('recurrence').optional().isIn(['daily', 'weekly']),
         body('completed').optional().isBoolean()
     ],

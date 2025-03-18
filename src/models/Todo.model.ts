@@ -6,8 +6,8 @@ export interface ITodo extends Document {
     text: string;
     completed: boolean;
     user: mongoose.Types.ObjectId;
-    dueDate?: Date;
-    recurrence?: 'daily' | 'weekly' | 'none';
+    date?: Date;
+    recurrence?: 'daily' | 'weekly' | 'none'; // Add 'none'
     originalTodo?: mongoose.Types.ObjectId;
     isRecurringInstance?: boolean;
     nextRecurrence?: Date;
@@ -36,11 +36,11 @@ const TodoSchema = new Schema<ITodo>({
         ref: 'User',
         required: true
     },
-    dueDate: Date,
+    date: Date,
     recurrence: {
         type: String,
-        enum: ['daily', 'weekly', 'none'],
-        default: 'none'
+        enum: ['daily', 'weekly', 'none'], // Add 'none' to enum
+        default: 'none' // Change default to 'none'
     },
     originalTodo: {
         type: Schema.Types.ObjectId,
@@ -119,7 +119,7 @@ cron.schedule('0 * * * *', async () => {
 });
 
 function calculateNextRecurrence(todo: ITodo, currentDate?: Date) {
-    const date = currentDate || todo.dueDate || new Date();
+    const date = currentDate || todo.date || new Date();
     const newDate = new Date(date);
 
     switch (todo.recurrence) {
