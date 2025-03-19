@@ -86,20 +86,26 @@ const Todo = model<ITodo, ITodoModel>('Todo', TodoSchema, 'todos');
 // Fix cleanup job
 // Update cleanup job to use UTC
 cron.schedule('0 0 * * *', async () => {
-    const yesterday = new Date();
-    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
-    yesterday.setUTCHours(0, 0, 0, 0);
+    const now = new Date();
+    const cutoffDate = new Date(now);
+    cutoffDate.setUTCDate(cutoffDate.getUTCDate() - 1);
+    cutoffDate.setUTCHours(0, 0, 0, 0);
 
-    await Todo.deleteMany({
+    console.log('Daily cleanup running for todos before:', cutoffDate.toISOString());
+
+    const result = await Todo.deleteMany({
         recurrence: { $exists: false },
         completed: true,
-        date: { $lt: yesterday },
+        date: { $lt: cutoffDate },
         isRecurringInstance: { $ne: true }
     });
+
+    console.log('Cleanup completed. Removed', result.deletedCount, 'todos');
 });
 
 // Recurrence generator (runs every hour)
 cron.schedule('0 * * * *', async () => {
+    console.log('Hourly recurrence check started...');
     const now = new Date();
 
     const recurringTodos = await Todo.find({
