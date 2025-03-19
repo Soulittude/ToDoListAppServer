@@ -13,13 +13,17 @@ import validateRequest from '../middlewares/validateRequest';
 import { auth } from '../middlewares/auth';
 
 const router = Router();
-
-// Apply auth middleware to ALL todo routes ▼
 router.use(auth);
 
 /**
  * @swagger
  * components:
+ *   securitySchemes:
+ *     bearerAuth:
+ *       type: http
+ *       scheme: bearer
+ *       bearerFormat: JWT
+ * 
  *   schemas:
  *     Todo:
  *       type: object
@@ -28,42 +32,71 @@ router.use(auth);
  *       properties:
  *         _id:
  *           type: string
- *           description: The auto-generated MongoDB ID
+ *           description: MongoDB unique identifier
+ *           example: "65d5b7e5a3b1a12a90c1e1d4"
  *         text:
  *           type: string
  *           minLength: 1
  *           maxLength: 500
- *           example: Buy groceries
+ *           example: "Buy groceries"
  *         completed:
  *           type: boolean
  *           default: false
+ *         date:
+ *           type: string
+ *           format: date-time
+ *           description: Due date for dated/recurring todos
+ *           example: "2024-03-20T09:00:00Z"
+ *         recurrence:
+ *           type: string
+ *           enum: [daily, weekly]
+ *           description: Recurrence pattern for repeating todos
+ *           example: "daily"
+ *         nextRecurrence:
+ *           type: string
+ *           format: date-time
+ *           description: Next occurrence date for recurring todos
+ *           example: "2024-03-21T09:00:00Z"
+ *         order:
+ *           type: number
+ *           description: Position in the todo list
+ *           example: 0
+ *         isRecurringInstance:
+ *           type: boolean
+ *           description: Flag for generated recurring instances
+ *         originalTodo:
+ *           type: string
+ *           description: Parent todo ID for recurring instances
  *         user:
  *           type: string
- *           description: The user ID who owns the todo
+ *           description: Owner user ID
  *         createdAt:
  *           type: string
  *           format: date-time
  *         updatedAt:
  *           type: string
  *           format: date-time
+ * 
  *   responses:
+ *     UnauthorizedError:
+ *       description: Missing or invalid authentication token
  *     NotFoundError:
  *       description: The specified resource was not found
  *       content:
  *         application/json:
  *           example:
  *             success: false
- *             error: Todo not found
+ *             error: "Todo not found"
  *     ValidationError:
  *       description: Validation failed
  *       content:
  *         application/json:
  *           example:
  *             success: false
- *             error: Validation failed
+ *             error: "Validation failed"
  *             errors:
- *               - msg: Text is required
- *                 param: text
+ *               - msg: "Text is required"
+ *                 param: "text"
  */
 
 router.patch(
@@ -79,26 +112,39 @@ router.patch(
 
 /**
  * @swagger
- * components:
- *   schemas:
- *     Todo:
- *       type: object
- *       properties:
- *         dueDate:
- *           type: string
- *           format: date-time
- *           example: "2024-03-15T09:00:00Z"
- *         recurrence:
- *           type: string
- *           enum: [daily, weekly]
- *           example: "daily"
- *         nextOccurrence:
- *           type: string
- *           format: date-time
- *           example: "2024-03-16T09:00:00Z"
+ * /api/todos/reorder:
+ *   patch:
+ *     summary: Reorder todos
+ *     tags: [Todos]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               ids:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *             example:
+ *               ids: ["65d5b7e5a3b1a12a90c1e1d4", "65d5b7e5a3b1a12a90c1e1d5"]
+ *     responses:
+ *       200:
+ *         description: Todos reordered successfully
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *       400:
+ *         $ref: '#/components/responses/ValidationError'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
  */
 
-// POST /todos ▼ (auth removed from route definition)
+// POST /todos ▼
 router.post(
     '/',
     [
@@ -130,31 +176,55 @@ router.post(
  * @swagger
  * /api/todos:
  *   post:
+ *     summary: Create a new todo
+ *     tags: [Todos]
  *     security:
  *       - bearerAuth: []
- *     tags: [Todos]
- *     summary: Create a new todo
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/Todo'
- *           example:
- *             text: Learn TypeScript
+ *           examples:
+ *             basicTodo:
+ *               summary: Basic Todo
+ *               value:
+ *                 text: "Buy milk"
+ *             datedTodo:
+ *               summary: Dated Todo
+ *               value:
+ *                 text: "Doctor appointment"
+ *                 date: "2024-03-25T14:00:00Z"
+ *             recurringTodo:
+ *               summary: Recurring Todo
+ *               value:
+ *                 text: "Daily standup"
+ *                 date: "2024-03-25T09:00:00Z"
+ *                 recurrence: "daily"
  *     responses:
  *       201:
- *         description: The created todo item
+ *         description: Todo created successfully
  *         content:
  *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Todo'
  *             example:
  *               success: true
  *               data:
  *                 _id: "65d5b7e5a3b1a12a90c1e1d4"
- *                 text: "Learn TypeScript"
+ *                 text: "Daily standup"
+ *                 date: "2024-03-25T09:00:00Z"
+ *                 recurrence: "daily"
+ *                 order: 3
  *                 completed: false
  *                 user: "65d5b7e5a3b1a12a90c1e1d5"
- *                 createdAt: "2024-02-21T10:00:00.000Z"
+ *                 createdAt: "2024-03-20T10:00:00Z"
+ *                 updatedAt: "2024-03-20T10:00:00Z"
+ *       400:
+ *         $ref: '#/components/responses/ValidationError'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
  */
 
 // PUT /todos/:id ▼
@@ -164,18 +234,15 @@ router.put(
     [
         body().custom(value => {
             const allowedFields = ['text', 'completed', 'date', 'recurrence', 'order'];
-            // Changed from dueDate to date
             if (!Object.keys(value).some(k => allowedFields.includes(k))) {
                 throw new Error('At least one valid field must be provided');
             }
             return true;
         }),
-        // Update validation for date instead of dueDate
         body('date').optional().isISO8601(),
-        // Add recurrence validation
         body('recurrence').custom((value, { req }) => {
             if (value && !req.body.date) {
-                throw new Error('Recurrence requires a start date');
+                throw new Error('Recurrence requires a date');
             }
             return true;
         })
@@ -188,37 +255,54 @@ router.put(
  * @swagger
  * /api/todos/{id}:
  *   put:
+ *     summary: Update a todo
+ *     tags: [Todos]
  *     security:
  *       - bearerAuth: []
- *     tags: [Todos]
- *     summary: Update a todo
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
  *           type: string
+ *         example: "65d5b7e5a3b1a12a90c1e1d4"
  *     requestBody:
  *       content:
  *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/Todo'
- *           example:
- *             text: Updated todo item
- *             completed: true
+ *           examples:
+ *             updateText:
+ *               value:
+ *                 text: "Updated task description"
+ *             completeTodo:
+ *               value:
+ *                 completed: true
+ *             updateRecurrence:
+ *               value:
+ *                 date: "2024-04-01T09:00:00Z"
+ *                 recurrence: "weekly"
  *     responses:
  *       200:
- *         description: The updated todo item
+ *         description: Todo updated successfully
  *         content:
  *           application/json:
  *             example:
  *               success: true
  *               data:
  *                 _id: "65d5b7e5a3b1a12a90c1e1d4"
- *                 text: "Updated todo item"
- *                 completed: true
- *                 user: "65d5b7e5a3b1a12a90c1e1d5"
- *                 updatedAt: "2024-02-21T10:05:00.000Z"
+ *                 text: "Updated task description"
+ *                 date: "2024-04-01T09:00:00Z"
+ *                 recurrence: "weekly"
+ *                 completed: false
+ *                 order: 2
+ *                 updatedAt: "2024-03-20T10:05:00Z"
+ *       400:
+ *         $ref: '#/components/responses/ValidationError'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       404:
+ *         $ref: '#/components/responses/NotFoundError'
  */
 
 // DELETE /todos/:id ▼
@@ -232,19 +316,22 @@ router.delete(
  * @swagger
  * /api/todos/{id}:
  *   delete:
+ *     summary: Delete a todo
+ *     tags: [Todos]
  *     security:
  *       - bearerAuth: []
- *     tags: [Todos]
- *     summary: Delete a todo
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
  *           type: string
+ *         example: "65d5b7e5a3b1a12a90c1e1d4"
  *     responses:
  *       204:
- *         description: Successfully deleted
+ *         description: Todo deleted successfully
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
  *       404:
  *         $ref: '#/components/responses/NotFoundError'
  */
@@ -260,16 +347,17 @@ router.get(
  * @swagger
  * /api/todos/{id}:
  *   get:
+ *     summary: Get a single todo
+ *     tags: [Todos]
  *     security:
  *       - bearerAuth: []
- *     tags: [Todos]
- *     summary: Get a single todo
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
  *           type: string
+ *         example: "65d5b7e5a3b1a12a90c1e1d4"
  *     responses:
  *       200:
  *         description: Todo details
@@ -279,11 +367,18 @@ router.get(
  *               success: true
  *               data:
  *                 _id: "65d5b7e5a3b1a12a90c1e1d4"
- *                 text: "Learn MERN Stack"
+ *                 text: "Team meeting"
+ *                 date: "2024-03-25T14:30:00Z"
+ *                 recurrence: "weekly"
+ *                 order: 1
  *                 completed: false
  *                 user: "65d5b7e5a3b1a12a90c1e1d5"
- *                 createdAt: "2024-02-21T10:00:00.000Z"
- *                 updatedAt: "2024-02-21T10:00:00.000Z"
+ *                 createdAt: "2024-03-20T09:00:00Z"
+ *                 updatedAt: "2024-03-20T09:00:00Z"
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       404:
+ *         $ref: '#/components/responses/NotFoundError'
  */
 
 // GET /todos ▼
@@ -296,10 +391,10 @@ router.get(
  * @swagger
  * /api/todos:
  *   get:
+ *     summary: Get all todos for current user
+ *     tags: [Todos]
  *     security:
  *       - bearerAuth: []
- *     tags: [Todos]
- *     summary: Get all todos for current user
  *     responses:
  *       200:
  *         description: List of todos
@@ -309,11 +404,18 @@ router.get(
  *               success: true
  *               data:
  *                 - _id: "65d5b7e5a3b1a12a90c1e1d4"
- *                   text: "Learn MERN Stack"
+ *                   text: "Project planning"
+ *                   date: "2024-03-22T10:00:00Z"
+ *                   order: 0
+ *                   completed: true
+ *                 - _id: "65d5b7e5a3b1a12a90c1e1d5"
+ *                   text: "Code review"
+ *                   recurrence: "daily"
+ *                   date: "2024-03-25T09:00:00Z"
+ *                   order: 1
  *                   completed: false
- *                   user: "65d5b7e5a3b1a12a90c1e1d5"
- *                   createdAt: "2024-02-21T10:00:00.000Z"
- *                   updatedAt: "2024-02-21T10:00:00.000Z"
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
  */
 
 export default router;
