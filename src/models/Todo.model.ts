@@ -6,8 +6,8 @@ export interface ITodo extends Document {
     text: string;
     completed: boolean;
     user: mongoose.Types.ObjectId;
-    date?: Date;
-    recurrence?: 'daily' | 'weekly' | 'none'; // Add 'none'
+    date?: Date; // Unified date field
+    recurrence?: 'daily' | 'weekly'; // Remove 'none'
     originalTodo?: mongoose.Types.ObjectId;
     isRecurringInstance?: boolean;
     nextRecurrence?: Date;
@@ -36,11 +36,14 @@ const TodoSchema = new Schema<ITodo>({
         ref: 'User',
         required: true
     },
-    date: Date,
+    date: {
+        type: Date,
+        index: true
+    },
     recurrence: {
         type: String,
-        enum: ['daily', 'weekly', 'none'], // Add 'none' to enum
-        default: 'none' // Change default to 'none'
+        enum: ['daily', 'weekly'], // Remove 'none'
+        default: undefined // No default
     },
     originalTodo: {
         type: Schema.Types.ObjectId,
@@ -62,10 +65,14 @@ const TodoSchema = new Schema<ITodo>({
         virtuals: true,
         transform: function (doc, ret) {
             delete ret.__v;
+            delete ret.id; // Remove duplicate ID
             return ret;
         }
     }
 });
+
+TodoSchema.index({ user: 1, date: 1 }); // For faster user-specific date queries
+TodoSchema.index({ originalTodo: 1 }); // For tracking recurring instances
 
 // Add cron job initialization here
 TodoSchema.statics.reorderTodos = async function (userId: string, ids: string[]) {
@@ -76,14 +83,17 @@ TodoSchema.statics.reorderTodos = async function (userId: string, ids: string[])
 const Todo = model<ITodo, ITodoModel>('Todo', TodoSchema, 'todos');
 
 // Daily cleanup job (runs at midnight)
+// Fix cleanup job
+// Update cleanup job to use UTC
 cron.schedule('0 0 * * *', async () => {
     const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
+    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+    yesterday.setUTCHours(0, 0, 0, 0);
 
     await Todo.deleteMany({
-        recurrence: 'none',
+        recurrence: { $exists: false },
         completed: true,
-        dueDate: { $lt: yesterday },
+        date: { $lt: yesterday },
         isRecurringInstance: { $ne: true }
     });
 });
@@ -93,7 +103,7 @@ cron.schedule('0 * * * *', async () => {
     const now = new Date();
 
     const recurringTodos = await Todo.find({
-        recurrence: { $ne: 'none' },
+        recurrence: { $exists: true }, // Changed from checking 'none'
         $or: [
             { nextRecurrence: { $lte: now } },
             { nextRecurrence: { $exists: false } }
@@ -101,19 +111,19 @@ cron.schedule('0 * * * *', async () => {
     });
 
     for (const todo of recurringTodos) {
-        const newDueDate = calculateNextRecurrence(todo);
+        const newDate = calculateNextRecurrence(todo);
 
         await Todo.create({
             text: todo.text,
-            dueDate: newDueDate,
+            date: newDate,
             recurrence: todo.recurrence,
             originalTodo: todo._id,
             isRecurringInstance: true,
             user: todo.user,
-            order: todo.order
+            order: await Todo.countDocuments({ user: todo.user }) // New items at end
         });
 
-        todo.nextRecurrence = calculateNextRecurrence(todo, newDueDate);
+        todo.nextRecurrence = calculateNextRecurrence(todo, newDate);
         await todo.save();
     }
 });
@@ -122,12 +132,15 @@ function calculateNextRecurrence(todo: ITodo, currentDate?: Date) {
     const date = currentDate || todo.date || new Date();
     const newDate = new Date(date);
 
+    // Reset time to midnight UTC for consistent scheduling
+    newDate.setUTCHours(0, 0, 0, 0);
+
     switch (todo.recurrence) {
         case 'daily':
-            newDate.setDate(newDate.getDate() + 1);
+            newDate.setUTCDate(newDate.getUTCDate() + 1);
             break;
         case 'weekly':
-            newDate.setDate(newDate.getDate() + 7);
+            newDate.setUTCDate(newDate.getUTCDate() + 7); // Fixed weekly increment
             break;
     }
 

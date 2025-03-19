@@ -8,7 +8,7 @@ const connectDB = async () => {
         // Required for Mongoose 7+ in TypeScript
         mongoose.set('strictQuery', true);
 
-        await mongoose.connect(process.env.MONGO_URI!);
+        await mongoose.connect(process.env.MONGODB_URI!);
         console.log('✅ MongoDB Connected');
     } catch (error) {
         console.error('❌ Connection Error:', error);

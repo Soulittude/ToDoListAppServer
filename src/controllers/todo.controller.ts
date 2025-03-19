@@ -9,11 +9,14 @@ const sendError = (res: Response, status: number, message: string) => {
 // Create Todo
 export const createTodo = async (req: Request, res: Response) => {
     try {
+        const order = req.body.order ?? await Todo.countDocuments({ user: req.userId });
+
         const todoData = {
             text: req.body.text,
             user: req.userId,
-            dueDate: req.body.dueDate,
-            recurrence: req.body.recurrence
+            date: req.body.date,
+            recurrence: req.body.recurrence,
+            order: req.body.order ?? await Todo.countDocuments({ user: req.userId })
         };
 
         const todo = await Todo.create(todoData);
@@ -27,12 +30,13 @@ export const updateTodo = async (req: Request, res: Response) => {
     try {
         const updateData: Record<string, any> = {
             text: req.body.text,
-            completed: req.body.completed
+            completed: req.body.completed,
+            date: req.body.date, // Changed from dueDate
+            recurrence: req.body.recurrence,
+            order: req.body.order
         };
 
-        if (req.body.dueDate !== undefined) updateData.dueDate = req.body.dueDate;
-        if (req.body.recurrence !== undefined) updateData.recurrence = req.body.recurrence;
-
+        // Remove dueDate checks
         const todo = await Todo.findOneAndUpdate(
             { _id: req.params.id, user: req.userId },
             updateData,

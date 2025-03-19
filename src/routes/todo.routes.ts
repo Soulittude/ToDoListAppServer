@@ -1,7 +1,6 @@
 import { Router } from 'express';
 import { body } from 'express-validator';
 import {
-    createSpecificDateTodo,
     createTodo,
     deleteTodo,
     getTodo,
@@ -104,9 +103,24 @@ router.post(
     '/',
     [
         body('text').trim().notEmpty().isLength({ max: 500 }),
-        body('date').optional().isISO8601(),
-        body('recurrence').optional().isIn(['daily', 'weekly']),
-        body('completed').optional().isBoolean()
+        body('date')
+            .optional()
+            .isISO8601()
+            .custom((value, { req }) => {
+                if (req.body.recurrence && !value) {
+                    throw new Error('Recurring todos require a start date');
+                }
+                return true;
+            }),
+        body('recurrence')
+            .optional()
+            .isIn(['daily', 'weekly'])
+            .custom((value, { req }) => {
+                if (value && !req.body.date) {
+                    throw new Error('Recurrence requires a date');
+                }
+                return true;
+            })
     ],
     validateRequest,
     createTodo
@@ -149,16 +163,22 @@ router.put(
     validateObjectId,
     [
         body().custom(value => {
-            const allowedFields = ['text', 'completed', 'dueDate', 'recurrence'];
+            const allowedFields = ['text', 'completed', 'date', 'recurrence', 'order'];
+            // Changed from dueDate to date
             if (!Object.keys(value).some(k => allowedFields.includes(k))) {
                 throw new Error('At least one valid field must be provided');
             }
             return true;
         }),
-        body('text').optional().trim().notEmpty().isLength({ max: 500 }),
-        body('dueDate').optional().isISO8601(),
-        body('recurrence').optional().isIn(['daily', 'weekly']),
-        body('completed').optional().isBoolean()
+        // Update validation for date instead of dueDate
+        body('date').optional().isISO8601(),
+        // Add recurrence validation
+        body('recurrence').custom((value, { req }) => {
+            if (value && !req.body.date) {
+                throw new Error('Recurrence requires a start date');
+            }
+            return true;
+        })
     ],
     validateRequest,
     updateTodo
@@ -295,17 +315,5 @@ router.get(
  *                   createdAt: "2024-02-21T10:00:00.000Z"
  *                   updatedAt: "2024-02-21T10:00:00.000Z"
  */
-
-// Add new route for specific date todos
-router.post(
-    '/specific-date',
-    [
-        body('text').trim().notEmpty().isLength({ max: 500 }),
-        body('specificDate').isISO8601(),
-        body('completed').optional().isBoolean()
-    ],
-    validateRequest,
-    createSpecificDateTodo
-);
 
 export default router;
