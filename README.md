@@ -6,50 +6,33 @@ REST API backend for the Todo application with authentication and background tas
 ### Core Functionality:
 
 - JWT Authentication
-
 - CRUD operations for todos
-
 - Recurring task generation
-
 - Automatic task cleanup
-
 - Rate limiting
-
 - Detailed API documentation (Swagger)
 
 ### Background Services:
 
 - 🕒 Hourly recurring task check
-
 - 🗑️ Daily cleanup of completed tasks
-
 - 🔐 Secure password hashing
 
 ### Database:
 
 - MongoDB Atlas integration
-
 - Indexed queries
-
 - Data validation
-
 - Soft delete pattern
 
 ## Technologies
 - Node.js 20
-
 - Express.js
-
 - MongoDB/Mongoose
-
 - JWT Authentication
-
 - Swagger UI
-
 - Node-Cron
-
 - Winston (Logging)
-
 - Express Validator
 
 ## API Documentation
@@ -58,8 +41,8 @@ Access Swagger UI at ```http://localhost:5000/api-docs```
 ## Setup
 ### 1. Clone Repository
 ```
-git clone https://github.com/your-username/todo-app-backend.git
-cd todo-app-backend
+git clone https://github.com/Soulittude/todolistappserver.git
+cd todolistappserver
 ```
 ### 2. Install Dependencies
 ```
