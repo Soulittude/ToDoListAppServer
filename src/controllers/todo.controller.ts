@@ -6,37 +6,20 @@ const sendError = (res: Response, status: number, message: string) => {
     return res.status(status).json({ success: false, error: message });
 };
 
+// Create Todo
 export const createTodo = async (req: Request, res: Response) => {
     try {
         const todoData = {
             text: req.body.text,
             user: req.userId,
             dueDate: req.body.dueDate,
-            recurrence: req.body.recurrence || 'none',
-            nextRecurrence: req.body.dueDate // Initialize next recurrence
+            recurrence: req.body.recurrence
         };
 
         const todo = await Todo.create(todoData);
         res.status(201).json({ success: true, data: todo });
     } catch (error) {
         sendError(res, 400, 'Failed to create todo');
-    }
-};
-
-// Add new endpoint for specific date todos
-export const createSpecificDateTodo = async (req: Request, res: Response) => {
-    try {
-        const todoData = {
-            text: req.body.text,
-            user: req.userId,
-            dueDate: req.body.specificDate,
-            recurrence: 'none'
-        };
-
-        const todo = await Todo.create(todoData);
-        res.status(201).json({ success: true, data: todo });
-    } catch (error) {
-        sendError(res, 400, 'Failed to create specific date todo');
     }
 };
 
